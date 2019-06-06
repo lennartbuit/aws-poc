@@ -1,0 +1,35 @@
+version: 2
+jobs:
+  test:
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+      - image: localstack/localstack
+        environment:
+          SERVICES: s3
+          DEBUG: 1
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "project.clj" }}
+            - v1-dependencies-
+      - run:
+          command: lein deps
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "project.clj" }}
+      - run:
+          command: dockerize -wait tcp://localhost:4572 -timeout 1m
+      - run:
+          command: lein test
+    environment:
+      - LEIN_ROOT: 'true'
+      - TZ: Europe/Amsterdam
+      - JVM_OPTS: -Xmx3200m
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test
